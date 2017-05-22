@@ -23,11 +23,14 @@ class server (threading.Thread):
 
 #Function for feeding data into protobuf generated class from file
 def readInput(vec):
-        cfg = str(input())
-        split = cfg.split()
+        temp_str=configFile.readline()
+        split = temp_str.split()
         vec.ID = split[0]
         vec.cost = float(split[1])
         vec.port = int(split[2])
+        print(vec.ID)
+        print(vec.cost)
+        print(vec.port)
 
 #Function for sending UDP packets
 def sendDV(MESSAGE):
@@ -43,17 +46,17 @@ def sendDV(MESSAGE):
 #################################
 
 #Code for reading from file (in progress)
-#if(len(sys.argv) < 4):
-#    print("Usage: python DVR.py <router-id> <port-no> <router-config-file>")
-#    exit()
+if(len(sys.argv) < 4):
+    print("Usage: python DVR.py <router-id> <port-no> <router-config-file>")
+    exit()
 
-#routerID = sys.argv[1]
-#port = int(sys.argv[2])
-#configFile = open(sys.argv[3])
-#n = int(configFile.readline().strip())
+routerID = sys.argv[1]
+port = int(sys.argv[2])
+configFile = open(sys.argv[3])
+n = int(configFile.readline().strip())
 
-print("Enter number of neighbours: ")
-n = int(input())
+#print("Enter number of neighbours: ")
+#n = int(input())
 
 distanceVec = []
 
