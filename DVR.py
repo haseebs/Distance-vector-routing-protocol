@@ -24,11 +24,14 @@ class server (threading.Thread):
 
 #Function for feeding data into protobuf generated class from file
 def readInput(vec):
-        cfg = input()
-        split = cfg.split()
+        temp_str=configFile.readline()
+        split = temp_str.split()
         vec.ID = split[0]
         vec.cost = float(split[1])
         vec.port = int(split[2])
+        print(vec.ID)
+        print(vec.cost)
+        print(vec.port)
         table[vec.ID][vec.ID] = vec.cost
         table[routerID][routerID] = 0
 
@@ -56,8 +59,8 @@ if(len(sys.argv) < 4):
 
 routerID = sys.argv[1]
 port = int(sys.argv[2])
-#configFile = open(sys.argv[3])
-#n = int(configFile.readline().strip())
+configFile = open(sys.argv[3])
+n = int(configFile.readline().strip())
 
 print("Enter number of neighbours: ")
 n = int(input())
