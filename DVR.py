@@ -11,26 +11,43 @@ class server (threading.Thread):
     def __init__(self, PORT):
         threading.Thread.__init__(self)
         self.port = PORT
+        self.distanceVec = distanceVec_pb2.Vector()
         self.changed = False
     def run(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', self.port))
         while 1:
             self.message, self.adr = self.sock.recvfrom(4096)
-            distanceVec.ParseFromString(self.message)
-            if(self.message != distanceVec):
+            self.distanceVec.ParseFromString(self.message)
+            if(self.distanceVec != distanceVec):
                 self.changed = True
             #print(distanceVec.neighbours[0].port)
 
+class bford (threading.Thread):
+    def __init__ (self):
+        threading.Thread.__init__(self)
+    def run(self):
+        while 1:
+            if (serv.changed):
+                serv.changed = False
+                minSource = min(table[serv.distanceVec.source].values())
+                for vec in serv.distanceVec.neighbours:
+                    if (vec.ID != routerID):#TODO [source][source] is not always the shortest path
+                        table[vec.ID][serv.distanceVec.source] = vec.cost + minSource  #TODO This will fail when there are link changes.
+                                                                          #Link changes will appear in vec.ID from neighbour to this router
+                #print(table)
+    def constructDV():
+        for 
+
 #Function for feeding data into protobuf generated class from file
 def readInput(vec):
-        cfg = input()
-        split = cfg.split()
-        vec.ID = split[0]
-        vec.cost = float(split[1])
-        vec.port = int(split[2])
-        table[vec.ID][vec.ID] = vec.cost
-        table[routerID][routerID] = 0
+    cfg = input()
+    split = cfg.split()
+    vec.ID = split[0]
+    vec.cost = float(split[1])
+    vec.port = int(split[2])
+    table[vec.ID][vec.ID] = vec.cost
+    #table[routerID][routerID] = 0 #TODO WHY DID I DO THIS? I FORGOT
 
 #Function for sending UDP packets
 def sendDV(MESSAGE):
@@ -65,6 +82,7 @@ n = int(input())
 distanceVec = distanceVec_pb2.Vector()
 
 #Store the inputs in protobuf ds
+distanceVec.source = routerID
 for i in range(n):
     readInput(distanceVec.neighbours.add())
 
@@ -74,9 +92,11 @@ serv.start()
 
 #Send distance vector to all neighbours
 sendDV(distanceVec)
+bellman = bford()
+bellman.start()
 print(table)
 
 #print(distanceVec)
 #print(distanceVec.SerializeToString())
 #print(distanceVec.ParseFromString(b'\n\n\n\x011\x15\x00\x00\x00@\x18\x03')) <- Extract
-#print(distanceVec.neighbours[0].port) <- Extract
+#print(distanceVec.neighbou rs[0].port) <- Extract

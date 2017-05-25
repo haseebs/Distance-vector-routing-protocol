@@ -8,5 +8,6 @@ message Neighbour {
 }
 
 message Vector {
-  repeated Neighbour neighbours = 1;
+  required string source = 1;
+  repeated Neighbour neighbours = 2;
 }

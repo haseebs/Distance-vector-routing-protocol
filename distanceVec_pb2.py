@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='distanceVec.proto',
   package='distanceVector',
   syntax='proto2',
-  serialized_pb=_b('\n\x11\x64istanceVec.proto\x12\x0e\x64istanceVector\"3\n\tNeighbour\x12\n\n\x02ID\x18\x01 \x02(\t\x12\x0c\n\x04\x63ost\x18\x02 \x02(\x02\x12\x0c\n\x04port\x18\x03 \x02(\x05\"7\n\x06Vector\x12-\n\nneighbours\x18\x01 \x03(\x0b\x32\x19.distanceVector.Neighbour')
+  serialized_pb=_b('\n\x11\x64istanceVec.proto\x12\x0e\x64istanceVector\"3\n\tNeighbour\x12\n\n\x02ID\x18\x01 \x02(\t\x12\x0c\n\x04\x63ost\x18\x02 \x02(\x02\x12\x0c\n\x04port\x18\x03 \x02(\x05\"G\n\x06Vector\x12\x0e\n\x06source\x18\x01 \x02(\t\x12-\n\nneighbours\x18\x02 \x03(\x0b\x32\x19.distanceVector.Neighbour')
 )
 
 
@@ -78,8 +78,15 @@ _VECTOR = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='neighbours', full_name='distanceVector.Vector.neighbours', index=0,
-      number=1, type=11, cpp_type=10, label=3,
+      name='source', full_name='distanceVector.Vector.source', index=0,
+      number=1, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='neighbours', full_name='distanceVector.Vector.neighbours', index=1,
+      number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -97,7 +104,7 @@ _VECTOR = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=90,
-  serialized_end=145,
+  serialized_end=161,
 )
 
 _VECTOR.fields_by_name['neighbours'].message_type = _NEIGHBOUR
