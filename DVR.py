@@ -33,25 +33,39 @@ class bford (threading.Thread):
     def __init__ (self):
         threading.Thread.__init__(self)
 
-    def constructDV():
+    def constructDV(self):
+        #TODO Figure out other way to access this global variable
+        global distanceVec
         self.newDistVec = distanceVec_pb2.Vector()
+        self.newDistVec.source = distanceVec.source
         for key,val in table.items():
             min = float(math.inf)
             for key1,val1 in val.items():
                 if(val1 < min):
                     min = val1
-            print(k, min)
+            vec = self.newDistVec.neighbours.add()
+            vec.ID = key
+            vec.cost = min
+        #If new distance vector != older one then update
+        #older and send new one to all neighbours
+        if (self.newDistVec != distanceVec):
+            distanceVec = self.newDistVec
+            sendDV(distanceVec)
+            print('###########################')
+            print(distanceVec)
 
     def run(self):
         while 1:
             if (serv.changed):
                 serv.changed = False
+                #TODO Check if distance to source is changed here
                 minSource = min(table[serv.distanceVec.source].values())
                 for vec in serv.distanceVec.neighbours:
                     if (vec.ID != routerID):                                           #TODO [source][source] is not always the shortest path
-                        table[vec.ID][serv.distanceVec.source] = vec.cost + minSource  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
-                #print(table)
-                constructDV()
+                        newVal = vec.cost + minSource
+                        if not (vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == newVal):
+                            table[vec.ID][serv.distanceVec.source] = vec.cost + minSource  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
+                            self.constructDV()
 
 ########################################
 #Function for feeding data into protobuf generated class from file
@@ -67,6 +81,10 @@ def readInput(vec):
 ########################################
 #Function for sending UDP packets
 ########################################
+def DVSendTimer():
+    threading.Timer(2.0, DVSendTimer).start()
+    sendDV(distanceVec)
+
 def sendDV(MESSAGE):
     IP = 'localhost'
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -101,8 +119,8 @@ for i in range(n):
 serv = server(port)
 serv.start()
 
-#Send distance vector to all neighbours
-sendDV(distanceVec)
+#Send distance vector to all neighbours every specified amount of seconds
+DVSendTimer()
 bellman = bford()
 bellman.start()
 print(table)
