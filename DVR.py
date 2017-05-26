@@ -58,6 +58,7 @@ class bford (threading.Thread):
         while 1:
             if (serv.changed):
                 serv.changed = False
+                self.linkCostChanged = False
                 #TODO Check if distance to source is changed here
                 minSource = min(table[serv.distanceVec.source].values())
                 for vec in serv.distanceVec.neighbours:
@@ -65,7 +66,9 @@ class bford (threading.Thread):
                         newVal = vec.cost + minSource
                         if not (vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == newVal):
                             table[vec.ID][serv.distanceVec.source] = vec.cost + minSource  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
-                            self.constructDV()
+                            linkCostChanged = True
+                if (linkCostChanged):
+                    self.constructDV()
 
 ########################################
 #Function for feeding data into protobuf generated class from file
