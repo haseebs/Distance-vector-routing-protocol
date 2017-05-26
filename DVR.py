@@ -33,16 +33,6 @@ class bford (threading.Thread):
     def __init__ (self):
         threading.Thread.__init__(self)
 
-    def run(self):
-        while 1:
-            if (serv.changed):
-                serv.changed = False
-                minSource = min(table[serv.distanceVec.source].values())
-                for vec in serv.distanceVec.neighbours:
-                    if (vec.ID != routerID):                                           #TODO [source][source] is not always the shortest path
-                        table[vec.ID][serv.distanceVec.source] = vec.cost + minSource  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
-                #print(table)
-
     def constructDV():
         self.newDistVec = distanceVec_pb2.Vector()
         for key,val in table.items():
@@ -52,6 +42,17 @@ class bford (threading.Thread):
                     min = val1
             print(k, min)
 
+    def run(self):
+        while 1:
+            if (serv.changed):
+                serv.changed = False
+                minSource = min(table[serv.distanceVec.source].values())
+                for vec in serv.distanceVec.neighbours:
+                    if (vec.ID != routerID):                                           #TODO [source][source] is not always the shortest path
+                        table[vec.ID][serv.distanceVec.source] = vec.cost + minSource  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
+                #print(table)
+                constructDV()
+
 ########################################
 #Function for feeding data into protobuf generated class from file
 ########################################
@@ -60,10 +61,7 @@ def readInput(vec):
     split = temp_str.split()
     vec.ID = split[0]
     vec.cost = float(split[1])
-    vec.port = int(split[2])
-    print(vec.ID)
-    print(vec.cost)
-    print(vec.port)
+    neighbourPorts.append(int(split[2]))
     table[vec.ID][vec.ID] = vec.cost
 
 ########################################
@@ -72,11 +70,8 @@ def readInput(vec):
 def sendDV(MESSAGE):
     IP = 'localhost'
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    for vec in MESSAGE.neighbours:
-        if (vec.port == -1):
-            continue
-        PORT = vec.port
-        sock.sendto(MESSAGE.SerializeToString(), (IP, PORT))
+    for port in neighbourPorts:
+        sock.sendto(MESSAGE.SerializeToString(), (IP, port))
     sock.close()
 
 #######################################
@@ -94,6 +89,7 @@ port = int(sys.argv[2])
 configFile = open(sys.argv[3])
 n = int(configFile.readline().strip())
 
+neighbourPorts = []
 distanceVec = distanceVec_pb2.Vector()
 
 #Store the inputs in protobuf ds
