@@ -6,6 +6,35 @@ import numpy as np
 import distanceVec_pb2
 from collections import defaultdict as dd
 
+class IO (threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def printMat(self):
+        global table
+        print("TO | [NEXT HOP-COST]")
+        for key,val in table.items():
+            print(key, ' | ',end='')
+            for key1, val1 in val.items():
+                print(key1, "-", "%.2f"%val1, '  ',end='')
+            print()
+
+    def takeInput(self):
+        global table
+        task = int(input('Enter 0 to view Reachability Matrix, 1 to change the cost: '))
+        if (task == 0):
+            self.printMat()
+        if (task == 1):
+            link = input('Enter the ID of link to change: ')
+            through = input('Enter the hop to change: ')
+            cost = input('Enter the new cost:')
+            table[link][through] = float(cost)
+
+    def run(self):
+        while(1):
+            self.takeInput()
+
+
 ########################################
 #UDP server running on separate thread
 ########################################
@@ -126,4 +155,8 @@ serv.start()
 DVSendTimer()
 bellman = bford()
 bellman.start()
+
+io = IO()
+io.start()
+
 print(table)
