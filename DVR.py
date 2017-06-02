@@ -6,6 +6,8 @@ import numpy as np
 import distanceVec_pb2
 from collections import defaultdict as dd
 
+MAX_NETWORK_SIZE = 16
+
 class IO (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -69,12 +71,16 @@ class bford (threading.Thread):
         self.newDistVec.source = distanceVec.source
         for key,val in table.items():
             min = float(math.inf)
+            minHop = ''
             for key1,val1 in val.items():
                 if(val1 < min):
                     min = val1
-            vec = self.newDistVec.neighbours.add()
-            vec.ID = key
-            vec.cost = min
+                    minHop = key1
+            if (min < 16): #TODO This might break the program, check if this really works
+                vec = self.newDistVec.neighbours.add()
+                vec.ID = key
+                vec.cost = min
+                nextHop[key] = minHop
         #If new distance vector != older one then update
         #older and send new one to all neighbours
         if (self.newDistVec != distanceVec):
@@ -84,6 +90,7 @@ class bford (threading.Thread):
             print(distanceVec)
 
     def run(self):
+        global MAX_NETWORK_SIZE
         while 1:
             if (serv.changed):
                 serv.changed = False
@@ -92,9 +99,12 @@ class bford (threading.Thread):
                 minSource = min(table[serv.distanceVec.source].values())
                 for vec in serv.distanceVec.neighbours:
                     if (vec.ID != routerID):                                           #TODO [source][source] is not always the shortest path
-                        newVal = vec.cost + minSource
+                        if (vec.cost >= MAX_NETWORK_SIZE):
+                            newVal = MAX_NETWORK_SIZE
+                        else:
+                            newVal = vec.cost + minSource
                         if not (vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == newVal):
-                            table[vec.ID][serv.distanceVec.source] = vec.cost + minSource  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
+                            table[vec.ID][serv.distanceVec.source] = newVal  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
                             linkCostChanged = True
                 if (linkCostChanged):
                     self.constructDV()
@@ -107,7 +117,8 @@ def readInput(vec):
     split = temp_str.split()
     vec.ID = split[0]
     vec.cost = float(split[1])
-    neighbourPorts.append(int(split[2]))
+    neighbourPorts[vec.ID] = int(split[2])
+    nextHop[vec.ID] = vec.ID
     table[vec.ID][vec.ID] = vec.cost
 
 ########################################
@@ -118,10 +129,19 @@ def DVSendTimer():
     sendDV(distanceVec)
 
 def sendDV(MESSAGE):
+    global MAX_NETWORK_SIZE
     IP = 'localhost'
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    for port in neighbourPorts:
+    msgBackup = distanceVec_pb2.Vector()
+    msgBackup.CopyFrom(MESSAGE)
+    for neighbour, port in neighbourPorts.items():
+        for vec in MESSAGE.neighbours:
+            if(nextHop[vec.ID] == neighbour):
+                vec.cost = MAX_NETWORK_SIZE
         sock.sendto(MESSAGE.SerializeToString(), (IP, port))
+        #print('########')
+        #print(neighbour, MESSAGE)
+        MESSAGE.CopyFrom(msgBackup)
     sock.close()
 
 #######################################
@@ -139,7 +159,8 @@ port = int(sys.argv[2])
 configFile = open(sys.argv[3])
 n = int(configFile.readline().strip())
 
-neighbourPorts = []
+nextHop = {}
+neighbourPorts = {}
 distanceVec = distanceVec_pb2.Vector()
 
 #Store the inputs in protobuf ds
@@ -159,4 +180,4 @@ bellman.start()
 io = IO()
 io.start()
 
-print(table)
+#print(table)
