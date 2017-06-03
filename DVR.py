@@ -10,7 +10,7 @@ from collections import defaultdict as dd
 #TODO FIX THE CASE WHERE ALL NEIGHBOURS OF NODE GO DOWN AND IT DOESNT PRINT OUTPUT
 #Global constants
 MAX_NETWORK_SIZE = 16
-TIMEOUT_PERIOD = 15
+TIMEOUT_PERIOD = 30
 
 ##################################
 #Thread for spotting dead routers
@@ -62,7 +62,7 @@ class IO (threading.Thread):
         global table
         print("TO | [NEXT HOP-COST]")
         for key,val in table.items():
-            print(key, ' | ',end='')
+            print(key, ' | ',end ='')
             for key1, val1 in val.items():
                 print(key1, "-", "%.2f"%val1, '  ',end='')
             print()
@@ -157,7 +157,7 @@ class bford (threading.Thread):
                 for vec in serv.distanceVec.neighbours:
                     sourceCost = table[serv.distanceVec.source][serv.distanceVec.source]
                     #If direct link cost is changed by neighbour or router has been restarted
-                    if (vec.ID == routerID and table[serv.distanceVec.source][serv.distanceVec.source] >= 16):
+                    if (vec.ID == routerID and table[serv.distanceVec.source][serv.distanceVec.source] >= MAX_NETWORK_SIZE):
                         if (vec.cost != table[serv.distanceVec.source][serv.distanceVec.source]):
                             table[serv.distanceVec.source][serv.distanceVec.source] = vec.cost
                             self.linkCostChanged = True
@@ -166,7 +166,7 @@ class bford (threading.Thread):
                         if (vec.cost >= MAX_NETWORK_SIZE):
                             newVal = MAX_NETWORK_SIZE
                         #When a dead router is back online
-                        elif (sourceCost >= 16 and vec.cost < 16):
+                        elif (sourceCost >= MAX_NETWORK_SIZE and vec.cost < MAX_NETWORK_SIZE):
                             for vec1 in serv.distanceVec.neighbours:
                                 if(vec1.ID == routerID):
                                     sourceCost = vec1.cost
@@ -202,7 +202,7 @@ def readInput(vec):
 #Functions for sending UDP packets
 ########################################
 def DVSendTimer():
-    threading.Timer(2.0, DVSendTimer).start()
+    threading.Timer(10.0, DVSendTimer).start()
     sendDV(distanceVec)
 
 def sendDV(MESSAGE):
