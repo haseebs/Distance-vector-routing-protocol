@@ -173,25 +173,28 @@ class bford (threading.Thread):
         while 1:
             if (serv.changed):
                 serv.changed = False
-                #TODO Check if distance to source is changed here
-                minSource = min(table[serv.distanceVec.source].values())
+                #sourceCost = min(table[serv.distanceVec.source].values())
                 for vec in serv.distanceVec.neighbours:
-                    if (vec.ID != routerID):
+                    sourceCost = table[serv.distanceVec.source][serv.distanceVec.source]
+                    #If direct link cost is changed by neighbour or router has been restarted
+                    if (vec.ID == routerID and table[serv.distanceVec.source][serv.distanceVec.source] >= 16):
+                        if (vec.cost != table[serv.distanceVec.source][serv.distanceVec.source]):
+                            table[serv.distanceVec.source][serv.distanceVec.source] = vec.cost
+                            self.linkCostChanged = True
+                    elif (vec.ID != routerID):
                         #When a router is unreachable, eliminate count to infinity
                         if (vec.cost >= MAX_NETWORK_SIZE):
                             newVal = MAX_NETWORK_SIZE
                         #When a dead router is back online
-                        #elif (minSource == 16 and vec.cost < 16):
-                        #    for vec1 in serv.distanceVec.neighbours:
-                        #        if(vec1.ID == routerID):
-                        #            minSource = vec1.cost
-                        #    table[serv.distanceVec.source][serv.distanceVec.source] = minSource
-                        #    print(serv.distanceVec.source, 'src')
-                        #    print(minSource)
-                        #    newVal = minSource + vec.cost
+                        elif (sourceCost >= 16 and vec.cost < 16):
+                            for vec1 in serv.distanceVec.neighbours:
+                                if(vec1.ID == routerID):
+                                    sourceCost = vec1.cost
+                            table[serv.distanceVec.source][serv.distanceVec.source] = sourceCost
+                            newVal = sourceCost + vec.cost
                         #Normal convergence
                         else:
-                            newVal = vec.cost + minSource
+                            newVal = vec.cost + sourceCost
                         if not (vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == newVal):
                             table[vec.ID][serv.distanceVec.source] = newVal
                             self.linkCostChanged = True
@@ -231,7 +234,9 @@ def sendDV(MESSAGE):
     #Implementation of poison reverse
     for neighbour, port in neighbourPorts.items():
         for vec in MESSAGE.neighbours:
-            if(nextHop[vec.ID] == neighbour):
+            #First condition is direct route, no harm if it gets passed through
+            #It has to pass through to handle router restarts properly
+            if(nextHop[vec.ID] != vec.ID and nextHop[vec.ID] == neighbour):
                 vec.cost = MAX_NETWORK_SIZE
         sock.sendto(MESSAGE.SerializeToString(), (IP, port))
         MESSAGE.CopyFrom(msgBackup)
