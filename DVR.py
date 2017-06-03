@@ -7,7 +7,6 @@ import numpy as np
 import distanceVec_pb2
 from collections import defaultdict as dd
 
-#TODO FIX THE CASE WHERE ALL NEIGHBOURS OF NODE GO DOWN AND IT DOESNT PRINT OUTPUT
 #Global constants
 MAX_NETWORK_SIZE = 16
 TIMEOUT_PERIOD = 30
