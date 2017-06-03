@@ -104,9 +104,6 @@ class server (threading.Thread):
             self.distanceVec.ParseFromString(self.message)
             if(self.distanceVec != distanceVec):
                 self.changed = True
-            #When this node was down but has now been restarted
-            #if(timeOut.down[self.distanceVec.source]):
-            #    flushValues(self.distanceVec.source)
             timeOut.isActive[self.distanceVec.source] = True
 
 ########################################
@@ -128,22 +125,6 @@ class bford (threading.Thread):
                 print("Least cost to", vec.ID, "is", "%.2f"%vec.cost, "through", nextHop[vec.ID])
             else:
                 print(vec.ID, "is unreachable")
-
-    #def compare(self):
-    #    sizeNew = len(self.newDistVec.neighbours)
-    #    sizeOld = len(distanceVec.neighbours)
-    #    if (sizeNew != sizeOld):
-    #        return True
-    #    for i in range(sizeNew):
-    #        similar = False
-    #        for j in range(sizeNew):
-    #            if (distanceVec.neighbours[i].ID == self.newDistVec.neighbours[j].ID):
-    #                if(distanceVec.neighbours[i].cost == self.newDistVec.neighbours[j].cost):
-    #                    similar = True
-    #                    break
-    #        if not (similar):
-    #            return True
-    #    return False
 
     def constructDV(self):
         #TODO Figure out other way to access this global variable
@@ -173,7 +154,6 @@ class bford (threading.Thread):
         while 1:
             if (serv.changed):
                 serv.changed = False
-                #sourceCost = min(table[serv.distanceVec.source].values())
                 for vec in serv.distanceVec.neighbours:
                     sourceCost = table[serv.distanceVec.source][serv.distanceVec.source]
                     #If direct link cost is changed by neighbour or router has been restarted
@@ -241,18 +221,6 @@ def sendDV(MESSAGE):
         sock.sendto(MESSAGE.SerializeToString(), (IP, port))
         MESSAGE.CopyFrom(msgBackup)
     sock.close()
-
-#def flushValues(ID):
-#    global table
-#    newTable = dd(dict)
-#    for i, j  in table.items():
-#        for k, l in j.items():
-#            if not ((i == ID) ^ (k == ID)):
-#                newTable[i][k] = table[i][k]
-#    table = newTable
-#    print(ID)
-#    print(newTable)
-#    io.printMat()
 
 #######################################
 # MAIN THREAD
