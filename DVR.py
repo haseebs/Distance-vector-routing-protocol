@@ -7,6 +7,7 @@ import numpy as np
 import distanceVec_pb2
 from collections import defaultdict as dd
 
+#TODO FIX THE CASE WHERE ALL NEIGHBOURS OF NODE GO DOWN AND IT DOESNT PRINT OUTPUT
 #Global constants
 MAX_NETWORK_SIZE = 16
 TIMEOUT_PERIOD = 15
@@ -110,11 +111,15 @@ class bford (threading.Thread):
 
     def printRoutes(self):
         global distanceVec
+        global MAX_NETWORK_SIZE
         print()
         print("#########################################")
         print("I am Router ", distanceVec.source)
         for vec in distanceVec.neighbours:
-            print("Least cost to", vec.ID, "is", "%.2f"%vec.cost, "through", nextHop[vec.ID])
+            if(vec.cost < MAX_NETWORK_SIZE):
+                print("Least cost to", vec.ID, "is", "%.2f"%vec.cost, "through", nextHop[vec.ID])
+            else:
+                print(vec.ID, "is unreachable")
 
     def constructDV(self):
         #TODO Figure out other way to access this global variable
@@ -150,8 +155,8 @@ class bford (threading.Thread):
                 for vec in serv.distanceVec.neighbours:
                     if (vec.ID != routerID):
                         #When a router is unreachable, eliminate count to infinity
-                        #if (vec.cost >= MAX_NETWORK_SIZE):
-                        #    newVal = MAX_NETWORK_SIZE
+                        if (vec.cost >= MAX_NETWORK_SIZE):
+                            newVal = MAX_NETWORK_SIZE
                         #When a dead router is back online
                         #elif (minSource == 16 and vec.cost < 16):
                         #    for vec1 in serv.distanceVec.neighbours:
@@ -160,8 +165,8 @@ class bford (threading.Thread):
                         #    table[serv.distanceVec.source][serv.distanceVec.source] = minSource
                         #    newVal = minSource + vec.cost
                         #Normal convergence
-                        #else:
-                        newVal = vec.cost + minSource
+                        else:
+                            newVal = vec.cost + minSource
                         if not (vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == newVal):
                             table[vec.ID][serv.distanceVec.source] = newVal
                             linkCostChanged = True
