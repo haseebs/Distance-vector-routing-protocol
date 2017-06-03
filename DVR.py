@@ -34,6 +34,7 @@ class TimeOut (threading.Thread):
         for id, val in table.items():
             if (ID in table[id]):
                 table[id][ID] = MAX_NETWORK_SIZE
+        bellman.linkCostChanged = True
 
     def run(self):
         global TIMEOUT_PERIOD
@@ -68,6 +69,7 @@ class IO (threading.Thread):
 
     def takeInput(self):
         global table
+        global bellman
         task = int(input('Enter 0 to view Reachability Matrix, 1 to change the cost: '))
         if (task == 0):
             self.printMat()
@@ -76,6 +78,8 @@ class IO (threading.Thread):
             through = input('Enter the hop to change: ')
             cost = input('Enter the new cost:')
             table[link][through] = float(cost)
+            #triggered update
+            bellman.linkCostChanged = True
 
     def run(self):
         while(1):
@@ -100,6 +104,9 @@ class server (threading.Thread):
             self.distanceVec.ParseFromString(self.message)
             if(self.distanceVec != distanceVec):
                 self.changed = True
+            #When this node was down but has now been restarted
+            #if(timeOut.down[self.distanceVec.source]):
+            #    flushValues(self.distanceVec.source)
             timeOut.isActive[self.distanceVec.source] = True
 
 ########################################
@@ -108,6 +115,7 @@ class server (threading.Thread):
 class bford (threading.Thread):
     def __init__ (self):
         threading.Thread.__init__(self)
+        self.linkCostChanged = False
 
     def printRoutes(self):
         global distanceVec
@@ -120,6 +128,22 @@ class bford (threading.Thread):
                 print("Least cost to", vec.ID, "is", "%.2f"%vec.cost, "through", nextHop[vec.ID])
             else:
                 print(vec.ID, "is unreachable")
+
+    #def compare(self):
+    #    sizeNew = len(self.newDistVec.neighbours)
+    #    sizeOld = len(distanceVec.neighbours)
+    #    if (sizeNew != sizeOld):
+    #        return True
+    #    for i in range(sizeNew):
+    #        similar = False
+    #        for j in range(sizeNew):
+    #            if (distanceVec.neighbours[i].ID == self.newDistVec.neighbours[j].ID):
+    #                if(distanceVec.neighbours[i].cost == self.newDistVec.neighbours[j].cost):
+    #                    similar = True
+    #                    break
+    #        if not (similar):
+    #            return True
+    #    return False
 
     def constructDV(self):
         #TODO Figure out other way to access this global variable
@@ -139,7 +163,7 @@ class bford (threading.Thread):
             nextHop[key] = minHop
         #If new distance vector != older one then update
         #older and send new one to all neighbours
-        if (self.newDistVec != distanceVec):
+        if (self.newDistVec.neighbours != distanceVec.neighbours):
             distanceVec = self.newDistVec
             sendDV(distanceVec)
             self.printRoutes()
@@ -149,7 +173,6 @@ class bford (threading.Thread):
         while 1:
             if (serv.changed):
                 serv.changed = False
-                self.linkCostChanged = False
                 #TODO Check if distance to source is changed here
                 minSource = min(table[serv.distanceVec.source].values())
                 for vec in serv.distanceVec.neighbours:
@@ -163,15 +186,18 @@ class bford (threading.Thread):
                         #        if(vec1.ID == routerID):
                         #            minSource = vec1.cost
                         #    table[serv.distanceVec.source][serv.distanceVec.source] = minSource
+                        #    print(serv.distanceVec.source, 'src')
+                        #    print(minSource)
                         #    newVal = minSource + vec.cost
                         #Normal convergence
                         else:
                             newVal = vec.cost + minSource
                         if not (vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == newVal):
                             table[vec.ID][serv.distanceVec.source] = newVal
-                            linkCostChanged = True
-                if (linkCostChanged):
-                    self.constructDV()
+                            self.linkCostChanged = True
+            if (self.linkCostChanged):
+                self.linkCostChanged = False
+                self.constructDV()
 
 ########################################
 #Function for feeding data into protobuf generated class from file
@@ -210,6 +236,18 @@ def sendDV(MESSAGE):
         sock.sendto(MESSAGE.SerializeToString(), (IP, port))
         MESSAGE.CopyFrom(msgBackup)
     sock.close()
+
+#def flushValues(ID):
+#    global table
+#    newTable = dd(dict)
+#    for i, j  in table.items():
+#        for k, l in j.items():
+#            if not ((i == ID) ^ (k == ID)):
+#                newTable[i][k] = table[i][k]
+#    table = newTable
+#    print(ID)
+#    print(newTable)
+#    io.printMat()
 
 #######################################
 # MAIN THREAD
