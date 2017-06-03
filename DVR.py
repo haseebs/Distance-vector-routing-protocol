@@ -1,4 +1,5 @@
 import sys
+import time
 import socket
 import math
 import threading
@@ -6,12 +7,55 @@ import numpy as np
 import distanceVec_pb2
 from collections import defaultdict as dd
 
+#Global constants
 MAX_NETWORK_SIZE = 16
+TIMEOUT_PERIOD = 15
 
+##################################
+#Thread for spotting dead routers
+##################################
+class TimeOut (threading.Thread):
+    #Timers stores the timers
+    #isActive is used to set router status
+    #down is used to prevent reassignments when the router is already down
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.Timers = {}
+        self.isActive = {}
+        self.down = {}
+
+    #Set the values of router that is down to infinity
+    def SetRouterDown(self, ID):
+        global MAX_NETWORK_SIZE
+        global table
+        print()
+        print(ID, 'HAS TIMED OUT')
+        for id, val in table.items():
+            if (ID in table[id]):
+                table[id][ID] = MAX_NETWORK_SIZE
+
+    def run(self):
+        global TIMEOUT_PERIOD
+        while(1):
+            for ID, timer in self.Timers.items():
+                if(self.isActive[ID] == True):
+                    self.Timers[ID] = time.time()
+                    self.isActive[ID] = False
+                    self.down[ID] = False
+                elif(self.down[ID] == False and time.time() - timer >= TIMEOUT_PERIOD and self.isActive[ID] == False):
+                    self.Timers[ID] = time.time()
+                    self.down[ID] = True
+                    self.SetRouterDown(ID)
+
+
+#####################################
+#Thread for handling user input and print output
+#####################################
 class IO (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
+    #Output reachability matrix
     def printMat(self):
         global table
         print("TO | [NEXT HOP-COST]")
@@ -36,7 +80,6 @@ class IO (threading.Thread):
         while(1):
             self.takeInput()
 
-
 ########################################
 #UDP server running on separate thread
 ########################################
@@ -48,6 +91,7 @@ class server (threading.Thread):
         self.changed = False
 
     def run(self):
+        global timeOut
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', self.port))
         while 1:
@@ -55,7 +99,7 @@ class server (threading.Thread):
             self.distanceVec.ParseFromString(self.message)
             if(self.distanceVec != distanceVec):
                 self.changed = True
-            #print(distanceVec.neighbours[0].port)
+            timeOut.isActive[self.distanceVec.source] = True
 
 ########################################
 #Class for Bellman Ford algorithm thread
@@ -63,6 +107,14 @@ class server (threading.Thread):
 class bford (threading.Thread):
     def __init__ (self):
         threading.Thread.__init__(self)
+
+    def printRoutes(self):
+        global distanceVec
+        print()
+        print("#########################################")
+        print("I am Router ", distanceVec.source)
+        for vec in distanceVec.neighbours:
+            print("Least cost to", vec.ID, "is", "%.2f"%vec.cost, "through", nextHop[vec.ID])
 
     def constructDV(self):
         #TODO Figure out other way to access this global variable
@@ -76,18 +128,16 @@ class bford (threading.Thread):
                 if(val1 < min):
                     min = val1
                     minHop = key1
-            if (min < 16): #TODO This might break the program, check if this really works
-                vec = self.newDistVec.neighbours.add()
-                vec.ID = key
-                vec.cost = min
-                nextHop[key] = minHop
+            vec = self.newDistVec.neighbours.add()
+            vec.ID = key
+            vec.cost = min
+            nextHop[key] = minHop
         #If new distance vector != older one then update
         #older and send new one to all neighbours
         if (self.newDistVec != distanceVec):
             distanceVec = self.newDistVec
             sendDV(distanceVec)
-            print('###########################')
-            print(distanceVec)
+            self.printRoutes()
 
     def run(self):
         global MAX_NETWORK_SIZE
@@ -98,13 +148,22 @@ class bford (threading.Thread):
                 #TODO Check if distance to source is changed here
                 minSource = min(table[serv.distanceVec.source].values())
                 for vec in serv.distanceVec.neighbours:
-                    if (vec.ID != routerID):                                           #TODO [source][source] is not always the shortest path
-                        if (vec.cost >= MAX_NETWORK_SIZE):
-                            newVal = MAX_NETWORK_SIZE
-                        else:
-                            newVal = vec.cost + minSource
+                    if (vec.ID != routerID):
+                        #When a router is unreachable, eliminate count to infinity
+                        #if (vec.cost >= MAX_NETWORK_SIZE):
+                        #    newVal = MAX_NETWORK_SIZE
+                        #When a dead router is back online
+                        #elif (minSource == 16 and vec.cost < 16):
+                        #    for vec1 in serv.distanceVec.neighbours:
+                        #        if(vec1.ID == routerID):
+                        #            minSource = vec1.cost
+                        #    table[serv.distanceVec.source][serv.distanceVec.source] = minSource
+                        #    newVal = minSource + vec.cost
+                        #Normal convergence
+                        #else:
+                        newVal = vec.cost + minSource
                         if not (vec.ID in table and serv.distanceVec.source in table[vec.ID] and table[vec.ID][serv.distanceVec.source] == newVal):
-                            table[vec.ID][serv.distanceVec.source] = newVal  #TODO This will fail when there are link changes. Link changes will appear in vec.ID from neighbour to this router
+                            table[vec.ID][serv.distanceVec.source] = newVal
                             linkCostChanged = True
                 if (linkCostChanged):
                     self.constructDV()
@@ -113,6 +172,7 @@ class bford (threading.Thread):
 #Function for feeding data into protobuf generated class from file
 ########################################
 def readInput(vec):
+    global timeOut
     temp_str=configFile.readline()
     split = temp_str.split()
     vec.ID = split[0]
@@ -120,9 +180,12 @@ def readInput(vec):
     neighbourPorts[vec.ID] = int(split[2])
     nextHop[vec.ID] = vec.ID
     table[vec.ID][vec.ID] = vec.cost
+    timeOut.Timers[vec.ID] = time.time()
+    timeOut.isActive[vec.ID] = False
+    timeOut.down[vec.ID] = False
 
 ########################################
-#Function for sending UDP packets
+#Functions for sending UDP packets
 ########################################
 def DVSendTimer():
     threading.Timer(2.0, DVSendTimer).start()
@@ -134,13 +197,12 @@ def sendDV(MESSAGE):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     msgBackup = distanceVec_pb2.Vector()
     msgBackup.CopyFrom(MESSAGE)
+    #Implementation of poison reverse
     for neighbour, port in neighbourPorts.items():
         for vec in MESSAGE.neighbours:
             if(nextHop[vec.ID] == neighbour):
                 vec.cost = MAX_NETWORK_SIZE
         sock.sendto(MESSAGE.SerializeToString(), (IP, port))
-        #print('########')
-        #print(neighbour, MESSAGE)
         MESSAGE.CopyFrom(msgBackup)
     sock.close()
 
@@ -154,14 +216,19 @@ if(len(sys.argv) < 4):
     print("Usage: python DVR.py <router-id> <port-no> <router-config-file>")
     exit()
 
+#Set initial vars
 routerID = sys.argv[1]
 port = int(sys.argv[2])
 configFile = open(sys.argv[3])
 n = int(configFile.readline().strip())
 
+#Initialize dictionaries and DV
 nextHop = {}
 neighbourPorts = {}
 distanceVec = distanceVec_pb2.Vector()
+
+#Initialize TimeOut but dont start it before starting server
+timeOut = TimeOut()
 
 #Store the inputs in protobuf ds
 distanceVec.source = routerID
@@ -171,13 +238,13 @@ for i in range(n):
 #Start UDP server thread
 serv = server(port)
 serv.start()
+timeOut.start()
 
 #Send distance vector to all neighbours every specified amount of seconds
 DVSendTimer()
 bellman = bford()
 bellman.start()
 
+#Start IO thread
 io = IO()
 io.start()
-
-#print(table)
