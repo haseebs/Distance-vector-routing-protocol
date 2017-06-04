@@ -3,7 +3,7 @@ import time
 import socket
 import math
 import threading
-import numpy as np
+#import numpy as np
 import distanceVec_pb2
 from collections import defaultdict as dd
 
