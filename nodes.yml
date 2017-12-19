@@ -4,9 +4,9 @@ name: nodes
 root: ~/workspace/dvrp
 
 windows:
-  - A: source ~/.bashrc; workon p3; python3 DVR.py A 5000 configs/configA.txt
-  - B: source ~/.bashrc; workon p3; python3 DVR.py B 5001 configs/configB.txt
-  - C: source ~/.bashrc; workon p3; python3 DVR.py C 5002 configs/configC.txt
-  - D: source ~/.bashrc; workon p3; python3 DVR.py D 5003 configs/configD.txt
-  - E: source ~/.bashrc; workon p3; python3 DVR.py E 5004 configs/configE.txt
-  - F: source ~/.bashrc; workon p3; python3 DVR.py F 5005 configs/configF.txt
+  - A: source ~/.bashrc; python3 DVR.py A 5000 configs/configA.txt
+  - B: source ~/.bashrc; python3 DVR.py B 5001 configs/configB.txt
+  - C: source ~/.bashrc; python3 DVR.py C 5002 configs/configC.txt
+  - D: source ~/.bashrc; python3 DVR.py D 5003 configs/configD.txt
+  - E: source ~/.bashrc; python3 DVR.py E 5004 configs/configE.txt
+  - F: source ~/.bashrc; python3 DVR.py F 5005 configs/configF.txt
