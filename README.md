@@ -7,15 +7,14 @@ Implementation  of distance-vector routing protocol using Bellman-Ford routing a
 * Tmux and Tmuxinator [Both Optional, for starting multiple routers at once]
 
 ## Usage
+For starting multiple routers at once (Recommended):
+* Modify the [root] attribute in nodes.yml to point to where the project was cloned
+* Place the nodes.yml in ~/.tmuxinator/nodes.yml
+* cd to root of the project folder
+* Execute ```tmuxinator start nodes ```
+
 For starting a router manually:
 ```bash
 python DVR.py [router-id] [any-unique-port-no] [path-to-router-config-file]
 ```
-
-For starting multiple routers at once:
-* Modify the [root] attribute in nodes.yml to point to where the project was cloned
-* Place the nodes.yml in ~/.tmuxinator/nodes.yml
-* cd to root of the project folder
-* Execute the following: ```tmuxinator start nodes ```
-
 
